@@ -2671,7 +2671,15 @@ def fetch_mobile_support_users(access_token: str | None) -> tuple[list[dict], st
     try:
         response = supabase.rpc("list_mobile_support_users").execute()
     except Exception as exc:  # pragma: no cover - Supabase runtime error
-        return [], str(exc)
+        raw_error = str(exc or "")
+        if "PGRST202" in raw_error or "list_mobile_support_users" in raw_error:
+            return (
+                [],
+                "Mobile Support user listing is not available yet. "
+                "Apply Supabase migration 0044_mobile_office_messages_per_mobile_user.sql, "
+                "then refresh the app after Supabase reloads its schema cache.",
+            )
+        return [], raw_error
     rows = response.data if isinstance(response.data, list) else []
     return rows, None
 
@@ -3925,7 +3933,7 @@ def render_family_contact() -> None:
 
 
 def render_care_hub_nav() -> None:
-    app_variant = get_app_variant()
+    app_variant = resolve_runtime_variant(route_hint=get_route())
     if app_variant == VARIANT_MOBILE:
         nav_cols = st.columns(2, gap="small")
         with nav_cols[0]:
@@ -3933,7 +3941,7 @@ def render_care_hub_nav() -> None:
                 set_route(get_home_route(app_variant))
         with nav_cols[1]:
             if st.button("Sign out", key="care_hub_nav_sign_out", use_container_width=True):
-                sign_out_user("care_hub")
+                sign_out_user("care_hub", post_logout_route=PUBLIC_HOME_ROUTE)
     else:
         nav_cols = st.columns(3, gap="small")
         with nav_cols[0]:
@@ -5069,7 +5077,7 @@ def clear_session_state(*, preserve_keys: set[str] | None = None) -> None:
 
 
 
-def sign_out_user(role: str | None = None) -> None:
+def sign_out_user(role: str | None = None, post_logout_route: str | None = None) -> None:
     supabase, error = get_supabase_client()
     if not error:
         try:
@@ -5088,7 +5096,7 @@ def sign_out_user(role: str | None = None) -> None:
         )
     clear_auth_cookie()
     clear_session_state()
-    set_route(get_default_route(get_app_variant()))
+    set_route(post_logout_route or get_default_route(get_app_variant()))
 
 
 def enforce_session_timeout() -> None:
@@ -14630,7 +14638,12 @@ def render_care_hub() -> None:
     render_page_header(page_title)
     render_dev_stage_level_status(access_token)
     if runtime_variant == VARIANT_MOBILE:
-        render_public_landing_button("Back to hub selection")
+        mobile_nav_cols = st.columns(2, gap="small")
+        with mobile_nav_cols[0]:
+            render_public_landing_button("Hub selection")
+        with mobile_nav_cols[1]:
+            if st.button("Sign out", key="mobile_top_sign_out", use_container_width=True):
+                sign_out_user("care_hub", post_logout_route=PUBLIC_HOME_ROUTE)
     elif runtime_variant == VARIANT_OFFICE:
         render_public_landing_button("Back to hub selection")
     if (
