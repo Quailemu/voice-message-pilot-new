@@ -92,6 +92,12 @@ APP_OFFICE_LIVE_REFRESH = os.getenv("APP_OFFICE_LIVE_REFRESH", "0").strip().lowe
 }
 SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY", "").strip()
 FAMILY_OFFICE_SETUP_CODE = os.getenv("FAMILY_OFFICE_SETUP_CODE", "").strip()
+APP_INVITATION_ONLY = os.getenv("APP_INVITATION_ONLY", "0").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 SUPABASE_AUDIO_BUCKET = os.getenv("SUPABASE_AUDIO_BUCKET", "voice-messages").strip() or "voice-messages"
 MEDIA_BASE_URL = (
     str(os.getenv("MEDIA_BASE_URL", "https://media.familyupdates.care") or "").strip().rstrip("/")
@@ -10413,6 +10419,12 @@ VARIANT_CONFIG = {
     },
 }
 
+INVITATION_ONLY_LOGIN_ROUTES = {
+    FAMILY_LOGIN_ROUTE,
+    MOBILE_LOGIN_ROUTE,
+    OFFICE_LOGIN_ROUTE,
+}
+
 
 def get_app_variant() -> str:
     return resolve_app_variant()
@@ -10679,6 +10691,59 @@ def is_public_route_for_variant(app_variant: str, route: str) -> bool:
     if app_variant == VARIANT_PUBLIC:
         return True
     return False
+
+
+def should_show_invitation_only_notice(app_variant: str, route: str) -> bool:
+    if not APP_INVITATION_ONLY:
+        return False
+    normalized_route = normalize_route(route) or PUBLIC_HOME_ROUTE
+    if normalized_route in INVITATION_ONLY_LOGIN_ROUTES:
+        return False
+    return app_variant == VARIANT_PUBLIC
+
+
+def render_invitation_only_notice() -> None:
+    inject_css()
+    st.markdown(
+        """
+<style>
+  .stApp {
+    background: #FFFFFF !important;
+  }
+  [data-testid="stHeader"],
+  [data-testid="stToolbar"],
+  [data-testid="stSidebar"],
+  [data-testid="stSidebarNav"],
+  [data-testid="collapsedControl"] {
+    display: none !important;
+  }
+  .block-container {
+    max-width: 720px !important;
+    padding-top: 3rem !important;
+  }
+  .private-access-box {
+    border: 1px solid rgba(15, 82, 92, 0.18);
+    border-radius: 8px;
+    padding: 18px 18px;
+    background: rgba(153, 255, 255, 0.16);
+    line-height: 1.5;
+  }
+</style>
+""",
+        unsafe_allow_html=True,
+    )
+    st.markdown("# familyupdates.care")
+    st.markdown(
+        """
+<div class="private-access-box">
+This site is invitation-only at the moment.
+<br><br>
+Please use the private link you were given.
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+    st.stop()
 
 
 def redirect_if_not_authenticated(app_variant: str, current_route: str) -> bool:
@@ -17614,6 +17679,8 @@ def main() -> None:
     route_resolved_variant = _resolve_variant_from_route(route)
     if route_resolved_variant in {VARIANT_FAMILY, VARIANT_MOBILE, VARIANT_OFFICE}:
         app_variant = route_resolved_variant
+    if should_show_invitation_only_notice(app_variant, route):
+        render_invitation_only_notice()
     apply_seo_head_tags(route, app_variant)
     route_allowlisted = is_route_allowed(app_variant, route)
     if APP_DEBUG:
