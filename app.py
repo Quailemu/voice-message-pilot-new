@@ -91,6 +91,7 @@ APP_OFFICE_LIVE_REFRESH = os.getenv("APP_OFFICE_LIVE_REFRESH", "0").strip().lowe
     "on",
 }
 SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY", "").strip()
+FAMILY_OFFICE_SETUP_CODE = os.getenv("FAMILY_OFFICE_SETUP_CODE", "").strip()
 SUPABASE_AUDIO_BUCKET = os.getenv("SUPABASE_AUDIO_BUCKET", "voice-messages").strip() or "voice-messages"
 MEDIA_BASE_URL = (
     str(os.getenv("MEDIA_BASE_URL", "https://media.familyupdates.care") or "").strip().rstrip("/")
@@ -1983,11 +1984,20 @@ def create_initial_family_office_setup(
     password: str,
     organiser_name: str,
     setup_name: str,
+    setup_code: str = "",
 ) -> tuple[bool, str]:
     normalized_email = str(email or "").strip().lower()
     password_value = str(password or "").strip()
     organiser_value = str(organiser_name or "").strip()
     setup_name_value = str(setup_name or "").strip()
+    setup_code_value = str(setup_code or "").strip()
+    if not FAMILY_OFFICE_SETUP_CODE:
+        return (
+            False,
+            "Initial Family Office setup is not enabled. Ask the service owner to create or enable the setup.",
+        )
+    if not hmac.compare_digest(setup_code_value, FAMILY_OFFICE_SETUP_CODE):
+        return False, "Enter the correct Family Office setup code."
     if not normalized_email:
         return False, "Enter the Family Office email."
     if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", normalized_email):
@@ -14326,42 +14336,49 @@ def render_care_login() -> None:
     normalized_password = password.strip()
     st.caption("Family Office uses organiser credentials. This is separate from Family Hub and Mobile PIN access.")
 
-    with st.expander("Set up the first Family Office organiser"):
-        st.caption(
-            "Use this once to create the Family Office setup and link the first organiser account. "
-            "After that, add Family Members and any co-organisers from inside Family Office."
-        )
-        with st.form("initial_family_office_setup_form"):
-            setup_email = st.text_input(
-                "Family Office email",
-                key="initial_family_office_email",
+    if FAMILY_OFFICE_SETUP_CODE:
+        with st.expander("Set up the first Family Office organiser"):
+            st.caption(
+                "Use this once to create the Family Office setup and link the first organiser account. "
+                "After that, add Family Members and any co-organisers from inside Family Office."
             )
-            setup_password = st.text_input(
-                "Office password",
-                type="password",
-                key="initial_family_office_password",
-            )
-            setup_organiser_name = st.text_input(
-                "Family Organiser name",
-                key="initial_family_office_organiser_name",
-            )
-            setup_family_name = st.text_input(
-                "Family setup name",
-                key="initial_family_office_setup_name",
-                placeholder="Example: Taylor Family Office",
-            )
-            create_family_office = st.form_submit_button("Create Family Office")
-        if create_family_office:
-            ok, message = create_initial_family_office_setup(
-                email=setup_email,
-                password=setup_password,
-                organiser_name=setup_organiser_name,
-                setup_name=setup_family_name,
-            )
-            if ok:
-                st.success(message)
-            else:
-                st.error(message)
+            with st.form("initial_family_office_setup_form"):
+                setup_email = st.text_input(
+                    "Family Office email",
+                    key="initial_family_office_email",
+                )
+                setup_password = st.text_input(
+                    "Office password",
+                    type="password",
+                    key="initial_family_office_password",
+                )
+                setup_organiser_name = st.text_input(
+                    "Family Organiser name",
+                    key="initial_family_office_organiser_name",
+                )
+                setup_family_name = st.text_input(
+                    "Family setup name",
+                    key="initial_family_office_setup_name",
+                    placeholder="Example: Taylor Family Office",
+                )
+                setup_code = st.text_input(
+                    "Setup code",
+                    type="password",
+                    key="initial_family_office_setup_code",
+                )
+                create_family_office = st.form_submit_button("Create Family Office")
+            if create_family_office:
+                ok, message = create_initial_family_office_setup(
+                    email=setup_email,
+                    password=setup_password,
+                    organiser_name=setup_organiser_name,
+                    setup_name=setup_family_name,
+                    setup_code=setup_code,
+                )
+                if ok:
+                    st.success(message)
+                else:
+                    st.error(message)
 
     st.markdown('<div id="vm-login-actions"></div>', unsafe_allow_html=True)
     show_sign_out = st.session_state.get("auth_uid")
