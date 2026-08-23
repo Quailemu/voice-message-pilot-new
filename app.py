@@ -13355,14 +13355,9 @@ def render_pr_homepage() -> None:
         unsafe_allow_html=True,
     )
     st.markdown(
-        "familyupdates.care keeps essential family coordination separate from chat.",
+        "Private family coordination for invited families.",
     )
-    if st.button("How it works", key="pr_entry_how_it_works", use_container_width=True):
-        set_route("/public/how-it-works")
-        st.stop()
-    if st.button("Try the one-message concept", key="pr_entry_one_message_test", use_container_width=True):
-        set_route(ONE_MESSAGE_TEST_ROUTE)
-        st.stop()
+    st.caption("Access is by invitation. Please use the sign-in route you were given.")
 
     action_cols = st.columns(3, gap="small")
     with action_cols[0]:
@@ -13377,17 +13372,6 @@ def render_pr_homepage() -> None:
         if st.button("Mobile", key="pr_entry_mobile", use_container_width=True):
             set_route(MOBILE_LOGIN_ROUTE)
             st.stop()
-
-    st.markdown('<div class="vm-home-infographic">', unsafe_allow_html=True)
-    render_familyupdates_infographic_image()
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    if st.button("Cartoons", key="pr_entry_cartoons", use_container_width=True):
-        st.session_state["pr_home_show_cartoons"] = not bool(
-            st.session_state.get("pr_home_show_cartoons", False)
-        )
-    if st.session_state.get("pr_home_show_cartoons", False):
-        render_familyupdates_cartoon_images()
     st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -17980,35 +17964,35 @@ def main() -> None:
     elif route == "/public/service-overview":
         set_route("/pr-home")
     elif route == "/public/how-it-works":
-        render_public_document("docs/public/02_how_it_works.md", back_route="/pr-home")
+        set_route("/pr-home")
     elif route == ONE_MESSAGE_TEST_ROUTE:
-        render_live_one_message_test()
+        set_route("/pr-home")
     elif route == "/public/infographic":
-        render_public_infographic()
+        set_route("/pr-home")
     elif route == "/public/resident-participation":
         set_route("/pr-home")
     elif route == "/public/family-guide":
         set_route("/public/qa")
     elif route == "/public/qa":
-        render_public_document("docs/public/10_faq.md")
+        set_route("/pr-home")
     elif route == "/public/faq":
-        render_public_document("docs/public/10_faq.md")
+        set_route("/pr-home")
     elif route == "/public/privacy-notice":
-        render_public_document("docs/public/privacy_policy.md")
+        set_route("/pr-home")
     elif route == "/public/family-terms-of-use":
-        render_public_document("docs/public/family_terms_of_use.md")
+        set_route("/pr-home")
     elif route == "/public/complaints-and-concerns":
-        render_public_document("docs/public/complaints_and_concerns.md")
+        set_route("/pr-home")
     elif route == "/public/safeguarding-and-consent":
-        render_public_document("docs/public/safeguarding_and_consent.md")
+        set_route("/pr-home")
     elif route in REMOVED_VIDEO_ROUTES:
-        set_route("/public/how-it-works")
+        set_route("/pr-home")
     elif route == "/public-privacy":
-        set_route("/public/privacy-notice")
+        set_route("/pr-home")
     elif route == "/public-complaints":
-        set_route("/public/complaints-and-concerns")
+        set_route("/pr-home")
     elif route == "/public-safeguarding":
-        set_route("/public/safeguarding-and-consent")
+        set_route("/pr-home")
     elif route == "/contracts":
         render_contracts()
     elif route == "/billing":
